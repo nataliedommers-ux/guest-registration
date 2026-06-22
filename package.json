@@ -1,0 +1,10 @@
+{
+    "name": "guest-registration",
+    "version": "1.0.0",
+    "description": "Slack /guest command → Notion visitor log",
+    "private": true,
+    "dependencies": {
+          "@notionhq/client": "^2.2.15",
+          "@slack/web-api": "^7.3.4"
+    }
+}
