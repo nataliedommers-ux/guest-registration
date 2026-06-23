@@ -24,6 +24,14 @@ function verifySlackSignature(rawBody, headers) {
   const expected = 'v0=' + crypto.createHmac('sha256', process.env.SLACK_SIGNING_SECRET).update(sigBase).digest('hex');
   try { return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(slackSig)); } catch { return false; }
 }
+// Format time as 12h (e.g. "2:00 PM") for US offices, 24h for London.
+function formatTime(time24, office) {
+    if (office === 'london') return time24;
+    const [h, m] = time24.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${hour}:${m.toString().padStart(2, '0')} ${period}`;
+}
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const rawBody = await getRawBody(req);
@@ -48,7 +56,7 @@ module.exports = async function handler(req, res) {
       properties: {
         'Guest Name': { title: [{ text: { content: guestName } }] },
         'Visit Date': { date: { start: visitDate } },
-        'Time': { rich_text: [{ text: { content: visitTime } }] },
+        'Time': { rich_text: [{ text: { content: formatTime(visitTime, office) } }] },
         'Meeting Room': { rich_text: [{ text: { content: meetingRoom } }] },
         'Host': { rich_text: [{ text: { content: host } }] },
         ...(guestEmail && { 'Guest Email for Parkday Pass': { email: guestEmail } }),
