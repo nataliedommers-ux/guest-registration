@@ -5,7 +5,7 @@ const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 module.exports.config = { api: { bodyParser: false } };
 async function getRawBody(req) {
   return new Promise((resolve, reject) => {
-    let data = '\;
+    let data = '';
     req.on('data', chunk => (data += chunk));
     req.on('end', () => resolve(data));
     req.on('error', reject);
