@@ -57,9 +57,9 @@ module.exports = async function handler(req, res) {
         'Guest Name': { title: [{ text: { content: guestName } }] },
         'Visit Date': { date: { start: visitDate } },
         'Time': { rich_text: [{ text: { content: formatTime(visitTime, office) } }] },
-        'Meeting Room': { rich_text: [{ text: { content: meetingRoom } }] },
+                ...(office !== 'london' && { 'Meeting Room': { rich_text: [{ text: { content: meetingRoom } }] } }),
         'Host': { rich_text: [{ text: { content: host } }] },
-        ...(guestEmail && { 'Guest Email for Parkday Pass': { email: guestEmail } }),
+                ...(office !== 'london' && guestEmail && { 'Guest Email for Parkday Pass': { email: guestEmail } }),
         ...(notes && { 'Notes': { rich_text: [{ text: { content: notes } }] } }),
       },
     });
