@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
       submit: { type: 'plain_text', text: 'Register' },
       close: { type: 'plain_text', text: 'Cancel' },
       blocks: [
-        { type: 'input', block_id: 'office', label: { type: 'plain_text', text: 'Office' }, element: { type: 'static_select', action_id: 'office_select', placeholder: { type: 'plain_text', text: 'Select an office' }, options: [ { text: { type: 'plain_text', text: 'NYC 🗽' }, value: 'nyc' }, { text:{ type: 'plain_text', text: 'SF 🌫️' }, value: 'sf' }, { text: { type: 'plain_text', text: 'London 🚌' }, value: 'london' } ] } },
+        { type: 'input', block_id: 'office', label: { type: 'plain_text', text: 'Office' }, element: { type: 'static_select', action_id: 'office_select', placeholder: { type: 'plain_text', text: 'Select an office' }, options: [ { text: { type: 'plain_text', text: 'NYC 🗽' }, value: 'nyc' }, { text:{ type: 'plain_text', text: 'SF 🌫️' }, value: 'sf' }, { text: { type: 'plain_text', text: 'London 🇬🇧' }, value: 'london' } ] } },
         { type: 'input', block_id: 'guest_name', label: { type: 'plain_text', text: 'Guest Name(s)' }, element: { type: 'plain_text_input', action_id: 'guest_name_input', placeholder: { type: 'plain_text', text: 'e.g. Jane Smith, John Doe' } } },
         { type: 'input', block_id: 'visit_date', label: { type: 'plain_text', text: 'Visit Date' }, element: { type: 'datepicker', action_id: 'visit_date_picker' } },
         { type: 'input', block_id: 'visit_time', label: { type: 'plain_text', text: 'Time' }, element: { type: 'timepicker', action_id: 'visit_time_picker' } },
