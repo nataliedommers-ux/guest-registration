@@ -25,6 +25,7 @@ module.exports = async function handler(req, res) {
   if (!verifySlackSignature(rawBody, req.headers)) return res.status(401).json({ error: 'Invalid Slack signature' });
   const params = new URLSearchParams(rawBody);
   const trigger_id = params.get('trigger_id');
+  const user_id = params.get('user_id');
   await slack.views.open({
     trigger_id,
     view: {
@@ -34,12 +35,12 @@ module.exports = async function handler(req, res) {
       submit: { type: 'plain_text', text: 'Register' },
       close: { type: 'plain_text', text: 'Cancel' },
       blocks: [
-        { type: 'input', block_id: 'office', label: { type: 'plain_text', text: 'Office' }, element: { type: 'static_select', action_id: 'office_select', placeholder: { type: 'plain_text', text: 'Select an office' }, options: [ { text: { type: 'plain_text', text: 'NYC 🗽' }, value: 'nyc' }, { text:{ type: 'plain_text', text: 'SF 🌫️' }, value: 'sf' }, { text: { type: 'plain_text', text: 'London 🇬🇧' }, value: 'london' } ] } },
+        { type: 'input', block_id: 'office', label: { type: 'plain_text', text: 'Office' }, element: { type: 'static_select', action_id: 'office_select', initial_option: { text: { type: 'plain_text', text: 'NYC 🗽' }, value: 'nyc' }, options: [ { text: { type: 'plain_text', text: 'NYC 🗽' }, value: 'nyc' } ] } },
         { type: 'input', block_id: 'guest_name', label: { type: 'plain_text', text: 'Guest Name(s)' }, element: { type: 'plain_text_input', action_id: 'guest_name_input', placeholder: { type: 'plain_text', text: 'e.g. Jane Smith, John Doe' } } },
         { type: 'input', block_id: 'visit_date', label: { type: 'plain_text', text: 'Visit Date' }, element: { type: 'datepicker', action_id: 'visit_date_picker' } },
         { type: 'input', block_id: 'visit_time', label: { type: 'plain_text', text: 'Time' }, element: { type: 'timepicker', action_id: 'visit_time_picker' } },
         { type: 'input', block_id: 'meeting_room', label: { type: 'plain_text', text: 'Meeting Room' }, element: { type: 'plain_text_input', action_id: 'meeting_room_input' } },
-        { type: 'input', block_id: 'host', label: { type: 'plain_text', text: 'Host' }, element: { type: 'plain_text_input', action_id: 'host_input' } },
+        { type: 'input', block_id: 'host', label: { type: 'plain_text', text: 'Host' }, element: { type: 'users_select', action_id: 'host_select', placeholder: { type: 'plain_text', text: 'Select the Clay host' }, ...(user_id && { initial_user: user_id }) } },
         { type: 'input', block_id: 'guest_email', label: { type: 'plain_text', text: 'Guest Email (for Parkday Pass)' }, optional: true, element: { type: 'plain_text_input', action_id: 'guest_email_input', placeholder: { type: 'plain_text', text: 'Optional' } } },
         { type: 'input', block_id: 'notes', label: { type: 'plain_text', text: 'Notes' }, optional: true, element: { type: 'plain_text_input', action_id: 'notes_input', multiline: true, placeholder: { type: 'plain_text', text: 'Optional' } } }
       ]
