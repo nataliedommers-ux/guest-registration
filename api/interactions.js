@@ -68,33 +68,67 @@ async function resolveHost(slackUserId) {
   } catch (err) { console.error('Notion users.list error:', err?.body || err.message); }
   return out;
 }
-const rt = text => ({ rich_text: [{ text: { content: text } }] });
-// Build the Notion properties for one office. Select-type fields are written as `select`; if the
-// column is actually multi_select, the retry in submit() swaps them.
-function buildProperties(office, f, host, notes, selectKind = 'select') {
-  const sel = name => selectKind === 'select' ? { select: { name } } : { multi_select: [{ name }] };
-  const base = {
-    'Visit Date': { date: { start: f.visitDate } },
-    'Arrival Time': rt(formatTime(f.visitTime)),
-    'Meeting Room': rt(f.meetingRoom),
-    ...(host.notionUserId && { 'Host': { people: [{ id: host.notionUserId }] } }),
+// Database schemas (column name → type), cached per database.
+const schemaCache = {};
+async function getSchema(dbId) {
+  if (schemaCache[dbId]) return schemaCache[dbId];
+  const db = await notion.databases.retrieve({ database_id: dbId });
+  const schema = {};
+  for (const [name, prop] of Object.entries(db.properties || {})) schema[name] = prop.type;
+  schemaCache[dbId] = schema;
+  return schema;
+}
+// Format a plain value for a Notion column of the given type.
+function formatForType(type, value) {
+  if (value === null || value === undefined || value === '') return undefined;
+  switch (type) {
+    case 'title':        return { title: [{ text: { content: String(value) } }] };
+    case 'rich_text':    return { rich_text: [{ text: { content: String(value) } }] };
+    case 'select':       return { select: { name: String(value) } };
+    case 'status':       return { status: { name: String(value) } };
+    case 'multi_select': return { multi_select: (Array.isArray(value) ? value : [value]).map(name => ({ name: String(name) })) };
+    case 'email':        return { email: String(value) };
+    case 'checkbox':     return { checkbox: Boolean(value) };
+    case 'date':         return { date: { start: String(value) } };
+    case 'people':       return { people: [{ id: String(value) }] };
+    case 'url':          return { url: String(value) };
+    case 'phone_number': return { phone_number: String(value) };
+    case 'number':       return { number: Number(value) };
+    default:             return undefined; // formulas, rollups, created_time etc. are read-only
+  }
+}
+// Desired values per column name for each office. Values are plain; types come from the live schema.
+function desiredValues(office, f, host, notes) {
+  const common = {
+    'Visit Date': f.visitDate,
+    'Arrival Time': formatTime(f.visitTime),
+    'Meeting Room': f.meetingRoom,
+    'Host': host.notionUserId,
   };
   if (office === 'london') {
-    return {
-      'Guest Name': { title: [{ text: { content: f.guestName } }] },
-      ...base,
-      ...(f.guestType && { 'Guest Type': sel(f.guestType) }),
-      ...(f.instructions && { 'Instructions': sel(f.instructions) }),
-      ...(notes && { 'Additional Notes': rt(notes) }),
-    };
+    return { 'Guest Name': f.guestName, ...common, 'Guest Type': f.guestType, 'Instructions': f.instructions, 'Additional Notes': notes };
   }
-  return {
-    'Name (First and Last)': { title: [{ text: { content: f.guestName } }] },
-    ...base,
-    'Email': { email: f.guestEmail },
-    'Parkday Pass': { checkbox: f.parkday },
-    ...(notes && { 'Notes': rt(notes) }),
-  };
+  return { 'Name (First and Last)': f.guestName, ...common, 'Email': f.guestEmail, 'Parkday Pass': f.parkday, 'Notes': notes };
+}
+// Build the Notion properties payload: only columns that exist, each in its real type.
+// If the Host column isn't a people column, the host's name goes in as text instead.
+async function buildProperties(dbId, office, f, host, notes) {
+  const schema = await getSchema(dbId);
+  const values = desiredValues(office, f, host, notes);
+  if (schema['Host'] && schema['Host'] !== 'people') values['Host'] = host.name;
+  const props = {};
+  const missing = [];
+  for (const [name, value] of Object.entries(values)) {
+    const type = schema[name];
+    if (!type) { if (value !== null && value !== undefined && value !== '') missing.push(name); continue; }
+    const formatted = formatForType(type, value);
+    if (formatted) props[name] = formatted;
+  }
+  // Make sure the title column is set even if its name differs from what we expect.
+  const titleCol = Object.keys(schema).find(n => schema[n] === 'title');
+  if (titleCol && !props[titleCol]) props[titleCol] = formatForType('title', f.guestName);
+  if (missing.length) console.warn(`Columns not found in ${office} database, skipped:`, missing.join(', '));
+  return props;
 }
 async function submit(payload, res) {
   const v = payload.view.state.values;
@@ -121,13 +155,8 @@ async function submit(payload, res) {
   // If we can't match the host to a Notion person, keep their name in Notes so nothing is lost.
   if (!host.notionUserId && host.name) notes = [`Host: ${host.name}`, notes].filter(Boolean).join('\n');
   try {
-    try {
-      await notion.pages.create({ parent: { database_id: dbId }, properties: buildProperties(office, f, host, notes, 'select') });
-    } catch (err) {
-      const msg = String(err?.body || err?.message || '');
-      if (!msg.includes('multi_select')) throw err;
-      await notion.pages.create({ parent: { database_id: dbId }, properties: buildProperties(office, f, host, notes, 'multi_select') });
-    }
+    const properties = await buildProperties(dbId, office, f, host, notes);
+    await notion.pages.create({ parent: { database_id: dbId }, properties });
   } catch (err) {
     console.error('Notion API error:', err?.body || err);
     return res.status(200).json({ response_action: 'errors', errors: { guest_name: 'Something went wrong saving to Notion. Check server logs.' } });
