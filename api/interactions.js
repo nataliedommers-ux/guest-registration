@@ -106,7 +106,7 @@ function desiredValues(office, f, host, notes) {
     'Host': host.notionUserId,
   };
   if (office === 'london') {
-    return { 'Guest Name': f.guestName, ...common, 'Guest Type': f.guestType, 'Instructions': f.instructions, 'Additional Notes': notes };
+    return { 'Guest Name': f.guestName, ...common, 'Guest Type': f.guestType, 'Instructions': f.instructions, 'Deliveroo Voucher': f.deliveroo, 'Additional Notes': notes };
   }
   return { 'Name (First and Last)': f.guestName, ...common, 'Email': f.guestEmail, 'Parkday Pass': f.parkday, 'Notes': notes };
 }
@@ -145,6 +145,7 @@ async function submit(payload, res) {
     parkday:      (v.parkday?.parkday_check?.selected_options?.length ?? 0) > 0,
     guestType:    v.guest_type?.guest_type_select?.selected_option?.value || null,
     instructions: v.instructions?.instructions_select?.selected_option?.value || null,
+    deliveroo:    (v.deliveroo?.deliveroo_check?.selected_options?.length ?? 0) > 0,
   };
   let notes = v.notes?.notes_input?.value || '';
   if (office === 'nyc' && !f.guestEmail) return res.status(200).json({ response_action: 'errors', errors: { guest_email: "Please enter the guest's email address." } });
