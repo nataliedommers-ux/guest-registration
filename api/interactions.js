@@ -106,7 +106,7 @@ function desiredValues(office, f, host, notes) {
     'Host': host.notionUserId,
   };
   if (office === 'london') {
-    return { 'Guest Name': f.guestName, ...common, 'Guest Type': f.guestType, 'Instructions': f.instructions, 'Deliveroo Voucher': f.deliveroo, 'Additional Notes': notes };
+    return { 'Guest Name': f.guestName, ...common, 'Guest Type': f.guestType, 'Instructions': f.instructions, 'Deliveroo Voucher': f.deliveroo, 'Email': f.guestEmail, 'Additional Notes': notes };
   }
   return { 'Name (First and Last)': f.guestName, ...common, 'Email': f.guestEmail, 'Parkday Pass': f.parkday, 'Notes': notes };
 }
@@ -149,6 +149,7 @@ async function submit(payload, res) {
   };
   let notes = v.notes?.notes_input?.value || '';
   if (office === 'nyc' && !f.guestEmail) return res.status(200).json({ response_action: 'errors', errors: { guest_email: "Please enter the guest's email address." } });
+  if (office === 'london' && f.deliveroo && !f.guestEmail) return res.status(200).json({ response_action: 'errors', errors: { guest_email: "An email address is needed for the Deliveroo voucher." } });
   let dbId = null;
   try { dbId = await resolveDbId(office); } catch (err) { console.error('resolveDbId error:', err?.body || err.message); }
   if (!dbId) return res.status(200).json({ response_action: 'errors', errors: { office: 'This office is not configured yet. Check the Notion connection and NOTION_DB_* settings.' } });
